@@ -2,16 +2,31 @@
 """
 	Wordpress Threat Remover
 	Currently this version only supports the removal of "eval(gzinflate(base64_decode("
+	Author : alix@booj.com
+	Version: .1
+	
+	There are two ways to write error-free programs;
+	only the third one works.
+		-- Alan J. Perlis
 """
 
 import os
 import sys
+import datetime
 import subprocess
 import shutil
 
-storage_dir = './results/'
+the_date     = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+storage_dir  = './results/%s/' % ( the_date )
+verbosity    = True
 armed        = False
 
+search_for = [ 'eval(gzinflate(base64_decode(' ]
+
+""" 
+	Find the infected files within a single wordpress install
+
+"""
 def search( wordpress_path ):
 	all_files = [os.path.join(dp, f) for dp, dn, filenames in os.walk( wordpress_path ) for f in filenames ]
 	print 'Found %s files to inspect' % len( all_files )
@@ -19,51 +34,88 @@ def search( wordpress_path ):
 	for fname in all_files:
 		with open( fname, 'r' ) as f:
 			file_content = f.readlines()
-			print fname
-			print file_content
-			if 'eval(gzinflate(base64_decode(' in file_content[0]:
-				infected_files.append( fname )
+			for line in file_content:
+				if 'eval(gzinflate(base64_decode(' in line:
+					if fname not in infected_files:
+						infected_files.append( fname )
+						break
 			f.close()
 	print 'Found %s infected files' % len(  infected_files )
 	return infected_files
 
-def destroy( wordpress_path, phile_path ):
-	local_backup_path = phile_path[ len( wordpress_path ) : phile_path.rfind('.') ] + '.backup' + phile_path[ phile_path.rfind('.') : ]
+"""
+	Finds the foriegn code, saves evaluation, backsup file, and removes the code.
+	@desc  : 
+	@params:
+		wordpress_path : str() path to the WP install ex: /srv/wordpress/danberry
+		phile_path     : str() infected file to back up, inflate, and clean. 
+"""
+def evaluate( wordpress_path, phile_path ):
+	local_backup_path  = phile_path[ len( wordpress_path ) : phile_path.rfind('.') ] + '.backup' + phile_path[ phile_path.rfind('.') : ]
 	local_exploit_path = phile_path[ len( wordpress_path ) : phile_path.rfind('.') ] + '.exploit' + phile_path[ phile_path.rfind('.') : ]
+	print phile_path
 	print local_backup_path
 	print phile_path
-	shutil.copy( phile_path, storage_dir + local_backup_path )
-	phile         = open( phile_path, 'rb')
-	file_contents = phile.readlines()
-	phile.close()
-	__unpack_gzip_base64( file_contents[0], local_exploit_path )
-	clean_file = open( phile_path, 'w')
-	print file_contents[1:]
-	clean_file.write( file_contents[1:] )
-	clean_file.close()
-	sys.exit()
+	print local_exploit_path
 
+	full_storage_dir = storage_dir + wordpress_path[ wordpress_path.rfind('/') : ]
+	if not os.path.exists( full_storage_dir + local_exploit_path[ : local_exploit_path.rfind( '/' ) ] ):
+		os.makedirs( full_storage_dir + local_exploit_path[ : local_exploit_path.rfind( '/' ) ] )
+	print 'Backing Up:  %s > %s ' % ( phile_path, full_storage_dir + local_backup_path )
+	shutil.copy( phile_path, storage_dir + local_backup_path )
+	phile_orig    = open( phile_path, 'rb' )
+	file_contents = phile_orig.readlines()
+	phile_orig.close()
+	
+	print 'Unpacking Exploited File'
+	unpacked   = """/*******   MALICIOUS CODE DO NOT EXECUTE   *******/\n"""
+	unpacked  += __unpack_gzip_base64( file_contents[0], local_exploit_path )
+	phile_exploit = open( storage_dir + local_exploit_path, 'w+' )
+	phile_exploit.write( unpacked )
+	phile_exploit.close()
+
+	print 'Cleaning File'
+	clean_file = open( phile_path, 'w')
+	for line in file_contents[1:]:
+		clean_file.write( line )
+	clean_file.close()
+
+"""
+	Runs a php script which decodes the infected php for inspection later.
+"""
 def __unpack_gzip_base64( line, report_path ):
 	bad_code = line[ line.find("base64_decode('") + 15 : -10 ]
-	cmd = [ 'php', './inflate_decode.php', bad_code ]
-	process = subprocess.Popen( cmd, stdout=subprocess.PIPE)
+	cmd      = [ 'php', './inflate_decode.php', bad_code ]
+	process  = subprocess.Popen( cmd, stdout=subprocess.PIPE)
 	out, err = process.communicate()
 	malicious_code = out
-	print report_path
-	f = open( storage_dir + report_path, 'w' )
-	f.write( malicious_code )
-	f.close()
+	return malicious_code
+
+"""
+	Finds the malicious_code that we are concerned about 
+	and adds the file to a list
+"""
+def __find_malicious_lines( script ):
+    line_count = 1
+    malicious_lines = []
+    for line in script:
+        if 'eval(gzinflate(base64_decode(' in line:
+            malicious_lines.append( line_count )
+        line_count = line_count + 1
+    return malicious_lines
 
 def launch( wordpress_path ):
 	infected_files = search( wordpress_path )
-	if armed:
-		for phile in infected_files:
-			print phile
-			destroy( wordpress_path, phile )
-	else:
-		print 'WordpressThreatRemover not armed'
+	for phile in infected_files:
+		evaluate( wordpress_path, phile )
 
 if __name__ == "__main__":
 	launch( sys.argv[1] )
 
-# End File
+
+
+
+
+
+
+# End File: 
