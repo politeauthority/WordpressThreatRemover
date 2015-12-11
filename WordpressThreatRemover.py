@@ -1,9 +1,11 @@
 #!/usr/bin/python
 """
 	Wordpress Threat Remover
-	Currently this version only supports the removal of "eval(gzinflate(base64_decode("
+	Currently this version supports the removal of 
+	"eval(gzinflate(base64_decode(" and
+	"$GLOBALS["\x61\156\x75\156\x61"]"
 	Author : alix@booj.com
-	Version: .1
+	Version: .2
 	
 	There are two ways to write error-free programs;
 	only the third one works.
@@ -15,13 +17,17 @@ import sys
 import datetime
 import subprocess
 import shutil
+from argparse import ArgumentParser
 
 the_date     = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 storage_dir  = './results/%s/' % ( the_date )
 verbosity    = True
 armed        = False
 
-search_for = [ 'eval(gzinflate(base64_decode(' ]
+search_for = [ 
+	'eval(gzinflate(base64_decode(',
+	'<?php if(!isset($GLOBALS["\x61\156\x75\156\x61"]))'
+	]
 
 """ 
 	Find the infected files within a single wordpress install
@@ -35,10 +41,11 @@ def search( wordpress_path ):
 		with open( fname, 'r' ) as f:
 			file_content = f.readlines()
 			for line in file_content:
-				if 'eval(gzinflate(base64_decode(' in line:
-					if fname not in infected_files:
-						infected_files.append( fname )
-						break
+				for search in search_for:
+					if search in line:
+						if fname not in infected_files:
+							infected_files.append( fname )
+							break
 			f.close()
 	print 'Found %s infected files' % len(  infected_files )
 	return infected_files
@@ -104,18 +111,21 @@ def __find_malicious_lines( script ):
         line_count = line_count + 1
     return malicious_lines
 
-def launch( wordpress_path ):
+def launch( wordpress_path, args ):
 	infected_files = search( wordpress_path )
-	for phile in infected_files:
-		evaluate( wordpress_path, phile )
+	if args.clean:
+		for phile in infected_files:
+			evaluate( wordpress_path, phile )
+
+def parse_args( args ):
+  parser = ArgumentParser(description='')
+  parser.add_argument('inspect_path', default=False, help='Downloads video urls from welcomemat')
+  parser.add_argument('-c','--clean', action='store_true', default=False, help='level')
+  args   = parser.parse_args()
+  return args
 
 if __name__ == "__main__":
-	launch( sys.argv[1] )
+	args = parse_args( sys.argv )
+ 	launch( args.inspect_path, args )
 
-
-
-
-
-
-
-# End File: 
+# End File: WordpressThreatRemover.py
