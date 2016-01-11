@@ -38,6 +38,8 @@ def search( wordpress_path ):
 	print 'Found %s files to inspect' % len( all_files )
 	infected_files = []
 	for fname in all_files:
+		if fname[-4:] != '.php':
+			continue
 		with open( fname, 'r' ) as f:
 			file_content = f.readlines()
 			for line in file_content:
