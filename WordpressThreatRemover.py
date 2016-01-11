@@ -49,6 +49,8 @@ def search( wordpress_path ):
 							infected_files.append( fname )
 							break
 			f.close()
+	for f in infected_files:
+		print f
 	print 'Found %s infected files' % len(  infected_files )
 	return infected_files
 
