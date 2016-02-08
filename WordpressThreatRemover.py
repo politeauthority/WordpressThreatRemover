@@ -27,7 +27,8 @@ armed        = False
 search_for = [ 
 	"""eval(gzinflate(base64_decode(""",
 	"""<?php if(!isset($GLOBALS["\x61\156\x75\156\x61"]))""",
-	"""<?php $nxvqmn = '**#k#)tutjyf`x x22l:!}V;3q%}"""
+	"""<?php $nxvqmn = '**#k#)tutjyf`x x22l:!}V;3q%}""",
+	"""<?php $twuttilhm = ']211M5]67]452]88]5]48]32M3]317]jyf"""
 	]
 
 """ 
