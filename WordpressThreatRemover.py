@@ -25,8 +25,9 @@ verbosity    = True
 armed        = False
 
 search_for = [ 
-	'eval(gzinflate(base64_decode(',
-	'<?php if(!isset($GLOBALS["\x61\156\x75\156\x61"]))'
+	"""eval(gzinflate(base64_decode(""",
+	"""<?php if(!isset($GLOBALS["\x61\156\x75\156\x61"]))""",
+	"""<?php $nxvqmn = '**#k#)tutjyf`x x22l:!}V;3q%}"""
 	]
 
 """ 
